@@ -143,22 +143,18 @@ void deallocateTaskCR3()
                                 if (*ptePtr & 0x1)
                                 {
                                     __deallocateAddr(&__pBitmap, __P_START_ADDR, 1, *ptePtr & 0xfffffffffffff000);
-                                    *ptePtr = 0;
                                 }
                             }
 
                             __deallocateAddr(&__pBitmap, __P_START_ADDR, 1, *pdePtr & 0xfffffffffffff000);
-                            *pdePtr = 0;
                         }
                     }
 
                     __deallocateAddr(&__pBitmap, __P_START_ADDR, 1, *pdptePtr & 0xfffffffffffff000);
-                    *pdptePtr = 0;
                 }
             }
 
             __deallocateAddr(&__pBitmap, __P_START_ADDR, 1, *pml4Ptr & 0xfffffffffffff000);
-            *pml4Ptr = 0;
         }
     }
 }
