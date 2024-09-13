@@ -4,7 +4,7 @@
 #include "Util.h"
 
 extern uint64_t intList[];
-uint64_t IDT[0x22 * 2];
+uint64_t IDT[0x22][2];
 
 void __picInit()
 {
@@ -29,8 +29,8 @@ void __idtInit()
 {
     for (uint64_t idx = 0; idx < 0x22; idx++)
     {
-        IDT[idx * 2]     = (intList[idx] & 0xffff) | ((3ull << 3) << 16) | (0x8e00ull << 32) | ((intList[idx] & 0xffff0000) << 32);
-        IDT[idx * 2 + 1] = intList[idx] >> 32;
+        IDT[idx][0] = (intList[idx] & 0xffff) | ((3ull << 3) << 16) | (0x8e00ull << 32) | ((intList[idx] & 0xffff0000) << 32);
+        IDT[idx][1] = intList[idx] >> 32;
     }
 
     struct { uint16_t __idtLimit; void *__idtBase; } __attribute__((__packed__)) IDTR = {sizeof(IDT) - 1, IDT};
