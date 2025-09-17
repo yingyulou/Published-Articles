@@ -4,13 +4,10 @@
 
 typedef struct
 {
-    uint8_t *__buf;
-    uint64_t __size;
+    uint8_t *__data;
 } Bitmap;
 
 
-void bitmapInit(Bitmap *this, uint8_t *buf, uint64_t size);
-bool bitmapGet(Bitmap *this, uint64_t idx);
-void bitmapSet(Bitmap *this, uint64_t idx, bool val);
+void bitmapInit(Bitmap *this, uint8_t *data);
 uint64_t bitmapAllocate(Bitmap *this, uint64_t bitCount);
 void bitmapDeallocate(Bitmap *this, uint64_t startIdx, uint64_t bitCount);

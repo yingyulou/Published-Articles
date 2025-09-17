@@ -4,7 +4,7 @@
 
 typedef struct
 {
-    char __fileName[24];
+    char __fileName[8];
     uint32_t __startSector;
     uint32_t __sectorCount;
 } FCB;
@@ -12,6 +12,6 @@ typedef struct
 
 void fsInit();
 void fsList();
-void fsCreate(const char *fileName, uint32_t startSector, uint32_t sectorCount);
+void fsCreate(const char *fileName, uint32_t startSector, uint8_t sectorCount);
 void fsDelete(const char *fileName);
 void fsLoad(const char *fileName);

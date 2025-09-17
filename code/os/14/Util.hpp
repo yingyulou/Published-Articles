@@ -2,9 +2,31 @@
 
 #include "Util.h"
 
-bool strEq(const char *lhs, const char *rhs)
+void memcpy(void *tarPtr, const void *srcPtr, uint32_t memSize)
 {
-    while (true)
+    __asm__ __volatile__(
+        "rep movsb"
+        : "+D"(tarPtr), "+S"(srcPtr), "+c"(memSize)
+        :
+        : "memory"
+    );
+}
+
+
+void memset(void *tarPtr, uint8_t setVal, uint32_t memSize)
+{
+    __asm__ __volatile__(
+        "rep stosb"
+        : "+D"(tarPtr), "+c"(memSize)
+        : "a"(setVal)
+        : "memory"
+    );
+}
+
+
+bool strcmp(const char *lhs, const char *rhs)
+{
+    for (;;)
     {
         if (*lhs && *rhs)
         {
@@ -25,11 +47,11 @@ bool strEq(const char *lhs, const char *rhs)
 }
 
 
-void strCopy(char *tarStr, const char *srcStr, unsigned strLen)
+void strcpy(char *tarStr, const char *srcStr, uint32_t strSize)
 {
-    int idx = 0;
+    uint32_t idx = 0;
 
-    for (; idx < strLen - 1; idx++)
+    for (; idx < strSize; idx++)
     {
         if (srcStr[idx])
         {

@@ -4,6 +4,7 @@
 #include "Int.hpp"
 #include "Memory.hpp"
 #include "Task.hpp"
+#include "Util.hpp"
 
 int main()
 {
@@ -12,15 +13,13 @@ int main()
     memoryInit();
     taskInit();
 
-    loadTaskPL3(1000, 20);
-    loadTaskPL3(1000, 20);
+    loadTaskPL3(1000, 100);
+    loadTaskPL3(1000, 100);
 
     __asm__ __volatile__("sti");
 
-    while (1)
+    for (;;)
     {
-        deleteTask();
-
         __asm__ __volatile__("hlt");
     }
 

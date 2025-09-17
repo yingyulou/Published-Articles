@@ -1,4 +1,4 @@
-section mbr vstart=0x7c00
+section Mbr vstart=0x7c00
 
     mov ax, 0xb800
     mov ds, ax
@@ -8,6 +8,6 @@ section mbr vstart=0x7c00
 
     jmp $
 
-times 510 - ($ - $$) db 0
+times 510 - ($ - $$) db 0x0
 
 db 0x55, 0xaa

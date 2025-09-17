@@ -11,11 +11,12 @@ typedef struct Node
 
 typedef struct
 {
-    Node root;
+    Node __root;
+    uint32_t __size;
 } Queue;
 
 
 void queueInit(Queue *this);
-bool queueEmpty(Queue *this);
+uint32_t queueGetSize(Queue *this);
 void queuePush(Queue *this, Node *pushNode);
 Node *queuePop(Queue *this);

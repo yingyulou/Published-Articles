@@ -4,9 +4,9 @@
 
 typedef struct
 {
-    char __fileName[24];
+    char __fileName[8];
     uint32_t __startSector;
-    uint8_t __sectorCount;
+    uint32_t __sectorCount;
 } FCB;
 
 

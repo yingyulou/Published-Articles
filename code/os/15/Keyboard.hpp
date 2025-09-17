@@ -17,7 +17,7 @@ const char __KEYBOARD_MAP_LIST[][2] =
 bool __shiftBool    = false;
 bool __capsLockBool = false;
 
-void keyboardDriver(uint32_t scanCode)
+void keyboardDriver(uint8_t scanCode)
 {
     if (scanCode == 0x2a || scanCode == 0xaa || scanCode == 0x36 || scanCode == 0xb6)
     {

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Keyboard.h"
-#include "IOQueue.h"
+#include "Buffer.h"
 #include "Print.h"
 #include "Util.h"
 
-IOQueue __keyboardIOQueue;
+Buffer __keyboardBuffer;
 
 const char __KEYBOARD_MAP_LIST[][2] =
 {
@@ -22,11 +22,11 @@ bool __capsLockBool = false;
 
 void keyboardInit()
 {
-    ioqueueInit(&__keyboardIOQueue);
+    bufferInit(&__keyboardBuffer);
 }
 
 
-void keyboardDriver(uint32_t scanCode)
+void keyboardDriver(uint8_t scanCode)
 {
     if (scanCode == 0x2a || scanCode == 0xaa || scanCode == 0x36 || scanCode == 0xb6)
     {
@@ -45,23 +45,28 @@ void keyboardDriver(uint32_t scanCode)
 
         if (asciiChar)
         {
-            ioqueuePush(&__keyboardIOQueue, asciiChar);
+            bufferPush(&__keyboardBuffer, asciiChar);
         }
     }
 }
 
 
-void inputStr(char *resStr, uint32_t strLen)
+void inputStr(char *strBuf, uint32_t strSize)
 {
-    for (int idx = 0; idx < strLen - 1;)
+    if (!strSize)
     {
-        char curChar = ioqueuePop(&__keyboardIOQueue);
+        return;
+    }
 
-        resStr[idx] = curChar;
+    for (uint32_t idx = 0; idx < strSize - 1; )
+    {
+        char curChar = bufferPop(&__keyboardBuffer);
+
+        strBuf[idx] = curChar;
 
         if (curChar == '\n')
         {
-            resStr[idx + 1] = 0;
+            strBuf[idx + 1] = 0;
             printChar(curChar);
             break;
         }
@@ -80,5 +85,5 @@ void inputStr(char *resStr, uint32_t strLen)
         }
     }
 
-    resStr[strLen - 1] = 0;
+    strBuf[strSize - 1] = 0;
 }

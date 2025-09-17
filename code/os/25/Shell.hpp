@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Shell.h"
-#include "Print.h"
 #include "Task.h"
+#include "Print.h"
 #include "FS.h"
 #include "Keyboard.h"
 #include "Util.h"
@@ -17,9 +17,9 @@ void __parseCmd(char *cmdStr)
     {
         cmdStr += 2;
 
-        const char *fileName = nextStr(&cmdStr);
-        uint32_t startSector = nextNum(&cmdStr);
-        uint32_t sectorCount = nextNum(&cmdStr);
+        const char *fileName = getNextStr(&cmdStr);
+        uint32_t startSector = getNextNum(&cmdStr);
+        uint32_t sectorCount = getNextNum(&cmdStr);
 
         fsCreate(fileName, startSector, sectorCount);
     }
@@ -27,13 +27,13 @@ void __parseCmd(char *cmdStr)
     {
         cmdStr += 2;
 
-        fsDelete(nextStr(&cmdStr));
+        fsDelete(getNextStr(&cmdStr));
     }
     else if (cmdStr[0] == 'r' && cmdStr[1] == ' ')
     {
         cmdStr += 2;
 
-        fsLoad(nextStr(&cmdStr));
+        fsLoad(getNextStr(&cmdStr));
     }
     else
     {

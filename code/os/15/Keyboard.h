@@ -2,4 +2,4 @@
 
 #include "Util.h"
 
-void keyboardDriver(uint32_t scanCode);
+void keyboardDriver(uint8_t scanCode);

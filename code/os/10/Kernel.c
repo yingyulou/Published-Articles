@@ -2,6 +2,7 @@
 #include "Print.hpp"
 #include "Int.hpp"
 #include "Memory.hpp"
+#include "Util.hpp"
 
 int main()
 {
@@ -34,7 +35,7 @@ int main()
 
     __asm__ __volatile__("sti");
 
-    while (1);
+    for (;;);
 
     return 0;
 }

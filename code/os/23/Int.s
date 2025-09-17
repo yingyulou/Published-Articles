@@ -2,16 +2,13 @@
 [default rel]
 
 extern printf
+extern getNextTask
 extern keyboardDriver
-extern queuePush
-extern queuePop
-extern taskQueue
 
-global intList
-global __nextTask
+global __intList
+global __taskSwitch
 
 %macro intTmpl 1
-
 int%1:
 
     mov rdi, __intFmtStr
@@ -19,8 +16,87 @@ int%1:
     call printf
 
     hlt
-
 %endmacro
+
+%macro pushaq 0
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+%endmacro
+
+%macro popaq 0
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+%endmacro
+
+intTimer:
+
+    pushaq
+
+    mov rax, 0xffff8000fee000b0
+    mov dword [rax], 0x0
+
+    mov rax, rsp
+    mov rbx, 0xfffffffffffff000
+    and rax, rbx
+
+    mov [rax + 0x18], rsp
+
+__taskSwitch:
+
+    call getNextTask
+
+    mov rbx, [rax + 0x10]
+    mov cr3, rbx
+
+    mov rsp, [rax + 0x18]
+
+    lea rbx, [rax + 0x1000]
+    mov [gs: 4], rbx
+
+    popaq
+
+    iretq
+
+intKeyboard:
+
+    pushaq
+
+    mov rax, 0xffff8000fee000b0
+    mov dword [rax], 0x0
+
+    in al, 0x60
+    mov dil, al
+    call keyboardDriver
+
+    popaq
+
+    iretq
 
 intTmpl 0x00
 intTmpl 0x01
@@ -55,70 +131,7 @@ intTmpl 0x1d
 intTmpl 0x1e
 intTmpl 0x1f
 
-intTimer:
-
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-
-    mov rax, 0xffff8000fee000b0
-    mov dword [rax], 0x0
-
-    mov rbx, rsp
-    mov rax, 0xfffffffffffff000
-    and rbx, rax
-
-    mov [rbx + 0x18], rsp
-
-    mov rdi, [rbx + 0x20]
-    mov rsi, rbx
-    call queuePush
-
-__nextTask:
-
-    mov rdi, taskQueue
-    call queuePop
-    mov rbx, rax
-
-    mov rax, [rbx + 0x10]
-    mov cr3, rax
-
-    mov rsp, [rbx + 0x18]
-
-    lea rax, [rbx + 0x1000]
-    mov [gs: 4], rax
-
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rbp
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-
-    iretq
-
-intList:
+__intList:
     dq int0x00
     dq int0x01
     dq int0x02
@@ -152,7 +165,7 @@ intList:
     dq int0x1e
     dq int0x1f
     dq intTimer
-    dq 0x0
+    dq intKeyboard
 
 __intFmtStr:
     db `Int: %d\n\0`

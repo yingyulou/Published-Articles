@@ -1,33 +1,34 @@
 #pragma once
 
 #include "Queue.h"
+#include "Lock.h"
 #include "Util.h"
 
 void queueInit(Queue *this)
 {
-    this->__root.__prev = this->__root.__next = &this->__root;
+    this->__root.__prev = &this->__root;
+    this->__root.__next = &this->__root;
+    this->__size = 0;
+
+    lockInit(&this->__lock);
 }
 
 
-bool queueEmpty(Queue *this)
+uint64_t queueGetSize(Queue *this)
 {
-    uint64_t RFLAGS;
+    lockAcquire(&this->__lock);
 
-    __asm__ __volatile__("pushf; pop %0; cli": "=g"(RFLAGS));
+    uint64_t queueSize = this->__size;
 
-    bool emptyBool = this->__root.__next == &this->__root;
+    lockRelease(&this->__lock);
 
-    __asm__ __volatile__("push %0; popf":: "g"(RFLAGS));
-
-    return emptyBool;
+    return queueSize;
 }
 
 
 void queuePush(Queue *this, Node *pushNode)
 {
-    uint64_t RFLAGS;
-
-    __asm__ __volatile__("pushf; pop %0; cli": "=g"(RFLAGS));
+    lockAcquire(&this->__lock);
 
     pushNode->__prev = this->__root.__prev;
     pushNode->__next = &this->__root;
@@ -35,22 +36,29 @@ void queuePush(Queue *this, Node *pushNode)
     this->__root.__prev->__next = pushNode;
     this->__root.__prev = pushNode;
 
-    __asm__ __volatile__("push %0; popf":: "g"(RFLAGS));
+    this->__size++;
+
+    lockRelease(&this->__lock);
 }
 
 
 Node *queuePop(Queue *this)
 {
-    uint64_t RFLAGS;
+    Node *popNode = 0;
 
-    __asm__ __volatile__("pushf; pop %0; cli": "=g"(RFLAGS));
+    lockAcquire(&this->__lock);
 
-    Node *popNode = this->__root.__next;
+    if (this->__size)
+    {
+        popNode = this->__root.__next;
 
-    popNode->__next->__prev = &this->__root;
-    this->__root.__next = popNode->__next;
+        popNode->__next->__prev = &this->__root;
+        this->__root.__next = popNode->__next;
 
-    __asm__ __volatile__("push %0; popf":: "g"(RFLAGS));
+        this->__size--;
+    }
+
+    lockRelease(&this->__lock);
 
     return popNode;
 }

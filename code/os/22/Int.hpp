@@ -3,8 +3,9 @@
 #include "Int.h"
 #include "Util.h"
 
-extern uint64_t intList[];
-uint64_t IDT[0x22][2];
+extern uint64_t __intList[];
+
+alignas(0x8) uint64_t IDT[0x22][2];
 
 void __picInit()
 {
@@ -20,15 +21,21 @@ void __apicInit()
 }
 
 
+void __makeIntGate(uint64_t *intGateLow, uint64_t *intGateHigh, uint64_t CS, uint64_t RIP, uint64_t gateAttr)
+{
+    *intGateLow  = (RIP & 0xffff) | (CS << 16) | (gateAttr << 32) | ((RIP & 0xffff0000) << 32);
+    *intGateHigh = RIP >> 32;
+}
+
+
 void __idtInit()
 {
     for (uint64_t idx = 0; idx < 0x22; idx++)
     {
-        IDT[idx][0] = (intList[idx] & 0xffff) | ((3ull << 3) << 16) | (0x8e00ull << 32) | ((intList[idx] & 0xffff0000) << 32);
-        IDT[idx][1] = intList[idx] >> 32;
+        __makeIntGate(IDT[idx], IDT[idx] + 1, 3 << 3, __intList[idx], 0x8e00);
     }
 
-    struct { uint16_t __idtLimit; void *__idtBase; } __attribute__((__packed__)) IDTR = {sizeof(IDT) - 1, IDT};
+    struct { uint16_t _0; void *_1; } __attribute__((__packed__)) IDTR = {sizeof(IDT) - 1, IDT};
 
     __asm__ __volatile__("lidt %0":: "m"(IDTR));
 }

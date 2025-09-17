@@ -6,21 +6,15 @@ global hdWrite
 
 hdRead:
 
-    push rbp
-    mov rbp, rsp
+    movzx rcx, dl
+    shl rcx, 8
 
-    push rdi
-    push rsi
-    push rdx
-    push rax
-    push rcx
-
+    mov al, dl
     mov dx, 0x1f2
-    mov al, [rbp - 0x18]
     out dx, al
 
     inc dx
-    mov eax, [rbp - 0x10]
+    mov eax, esi
     out dx, al
 
     inc dx
@@ -48,37 +42,21 @@ hdRead:
     jne .__waitHD
 
     mov dx, 0x1f0
-    movzx rcx, byte [rbp - 0x18]
-    shl rcx, 8
-    mov rdi, [rbp - 0x8]
     rep insw
 
-    pop rcx
-    pop rax
-    pop rdx
-    pop rsi
-    pop rdi
-
-    leave
     ret
 
 hdWrite:
 
-    push rbp
-    mov rbp, rsp
+    movzx rcx, dl
+    shl rcx, 8
 
-    push rdi
-    push rsi
-    push rdx
-    push rax
-    push rcx
-
+    mov al, dl
     mov dx, 0x1f2
-    mov al, [rbp - 0x18]
     out dx, al
 
     inc dx
-    mov eax, [rbp - 0x10]
+    mov eax, esi
     out dx, al
 
     inc dx
@@ -106,16 +84,7 @@ hdWrite:
     jne .__waitHD
 
     mov dx, 0x1f0
-    movzx rcx, byte [rbp - 0x18]
-    shl rcx, 8
-    mov rsi, [rbp - 0x8]
+    mov rsi, rdi
     rep outsw
 
-    pop rcx
-    pop rax
-    pop rdx
-    pop rsi
-    pop rdi
-
-    leave
     ret

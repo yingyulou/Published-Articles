@@ -4,33 +4,9 @@
 #include "Util.h"
 
 const char __HEX_LIST[] = "0123456789ABCDEF";
+uint32_t __cursorNum = 0;
 
-uint32_t __getSector()
-{
-    uint32_t sectorNum = 0;
-
-    __asm__ __volatile__(
-        "mov $0x3d4, %%dx\n\t"
-        "mov $0xe, %%al\n\t"
-        "out %%al, %%dx\n\t"
-        "inc %%dx\n\t"
-        "in %%dx, %%al\n\t"
-        "mov %%al, %%ah\n\t"
-        "mov $0x3d4, %%dx\n\t"
-        "mov $0xf, %%al\n\t"
-        "out %%al, %%dx\n\t"
-        "inc %%dx\n\t"
-        "in %%dx, %%al\n\t"
-        : "=a"(sectorNum)
-        :
-        : "edx"
-    );
-
-    return sectorNum;
-}
-
-
-void __setSector(uint32_t sectorNum)
+void __setCursor()
 {
     __asm__ __volatile__(
         "mov $0x3d4, %%dx\n\t"
@@ -46,7 +22,7 @@ void __setSector(uint32_t sectorNum)
         "mov %b0, %%al\n\t"
         "out %%al, %%dx\n\t"
         :
-        : "b"(sectorNum)
+        : "b"(__cursorNum)
         : "eax", "edx"
     );
 }
@@ -54,49 +30,38 @@ void __setSector(uint32_t sectorNum)
 
 void printChar(char tarChar)
 {
-    uint32_t sectorNum = __getSector();
-
     switch (tarChar)
     {
         case '\b':
 
-            if (sectorNum)
+            if (__cursorNum)
             {
-                sectorNum--;
+                __cursorNum--;
             }
 
-            *(char *)(0xb8000 + sectorNum * 2) = ' ';
+            *(char *)(0xb8000 + __cursorNum * 2) = ' ';
             break;
 
         case '\n':
         case '\r':
-            sectorNum = (sectorNum / 80 + 1) * 80;
+            __cursorNum = (__cursorNum + 80) / 80 * 80;
             break;
 
         default:
-            *(char *)(0xb8000 + sectorNum * 2) = tarChar;
-            sectorNum++;
+            *(char *)(0xb8000 + __cursorNum * 2) = tarChar;
+            __cursorNum++;
             break;
     }
 
-    if (sectorNum >= 2000)
+    if (__cursorNum >= 2000)
     {
-        __asm__ __volatile__(
-            "rep movsl\n\t"
-            :
-            : "S"(0xb80a0), "D"(0xb8000), "c"(960)
-        );
+        __asm__ __volatile__("rep movsl":: "S"(0xb80a0), "D"(0xb8000), "c"(960));
+        __asm__ __volatile__("rep stosl":: "a"(0x07200720), "D"(0xb8f00), "c"(40));
 
-        __asm__ __volatile__(
-            "rep stosl\n\t"
-            :
-            : "a"(0x07200720), "D"(0xb8f00), "c"(40)
-        );
-
-        sectorNum = 1920;
+        __cursorNum = 1920;
     }
 
-    __setSector(sectorNum);
+    __setCursor();
 }
 
 
@@ -117,8 +82,8 @@ void printInt(uint32_t tarNum)
     }
     else
     {
-        char numStr[10] = {};
-        int idx = 0;
+        char numStr[0x10] = {};
+        int32_t idx = 0;
 
         for (; tarNum; tarNum /= 10, idx++)
         {
@@ -137,7 +102,7 @@ void printHex(uint32_t tarNum)
 {
     printStr("0x");
 
-    for (int idx = 7; idx >= 0; idx--)
+    for (int32_t idx = 7; idx >= 0; idx--)
     {
         printChar(__HEX_LIST[(tarNum >> idx * 4) & 0xf]);
     }
@@ -149,26 +114,15 @@ void printf(const char *fmtStr, ...)
     va_list vaList;
     va_start(vaList, fmtStr);
 
-    bool lexerState = false;
-
-    for (int idx = 0; fmtStr[idx]; idx++)
+    for (uint32_t idx = 0; fmtStr[idx]; idx++)
     {
-        if (!lexerState)
+        if (fmtStr[idx] != '%')
         {
-            switch (fmtStr[idx])
-            {
-                case '%':
-                    lexerState = true;
-                    break;
-
-                default:
-                    printChar(fmtStr[idx]);
-                    break;
-            }
+            printChar(fmtStr[idx]);
         }
-        else
+        else if (fmtStr[idx + 1])
         {
-            switch (fmtStr[idx])
+            switch (fmtStr[++idx])
             {
                 case '%':
                     printChar('%');
@@ -195,8 +149,6 @@ void printf(const char *fmtStr, ...)
                     printChar(fmtStr[idx]);
                     break;
             }
-
-            lexerState = false;
         }
     }
 
@@ -206,13 +158,9 @@ void printf(const char *fmtStr, ...)
 
 void __cleanScreen()
 {
-    __asm__ __volatile__(
-        "rep stosl\n\t"
-        :
-        : "a"(0x07200720), "D"(0xb8000), "c"(1000)
-    );
+    __asm__ __volatile__("rep stosl":: "a"(0x07200720), "D"(0xb8000), "c"(1000));
 
-    __setSector(0);
+    __setCursor();
 }
 
 

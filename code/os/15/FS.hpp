@@ -1,44 +1,51 @@
 #pragma once
 
 #include "FS.h"
+#include "Bitmap.h"
 #include "Print.h"
 #include "Task.h"
 #include "HD.h"
 #include "Util.h"
 
-FCB fcbList[16];
-uint8_t hdBitmapBuf[512];
-Bitmap hdBitmap;
+#define __FS_SUPER_BLOCK  98
+#define __FS_BITMAP_BLOCK ((__FS_SUPER_BLOCK) + 1)
+#define __FS_START_BLOCK  ((__FS_BITMAP_BLOCK) + 1)
+#define __FS_MAGIC        0x66666666
+#define __FS_FCB_COUNT    (512 / sizeof(FCB) - 1)
+
+FCB __fcbList[__FS_FCB_COUNT + 1];
+uint8_t __hdBitmapBuf[512];
+Bitmap __hdBitmap;
 
 void fsInit()
 {
-    hdRead(fcbList, 100, 1);
+    hdRead(__fcbList, __FS_SUPER_BLOCK, 1);
 
-    if (*(uint32_t *)(fcbList + 15) == 0x66666666)
+    if (*(uint32_t *)(__fcbList + __FS_FCB_COUNT) == __FS_MAGIC)
     {
-        hdRead(hdBitmapBuf, 101, 1);
-        bitmapInit(&hdBitmap, hdBitmapBuf, 512 * 8, false);
+        hdRead(__hdBitmapBuf, __FS_BITMAP_BLOCK, 1);
+
+        bitmapInit(&__hdBitmap, __hdBitmapBuf);
     }
     else
     {
-        memset(fcbList, 0, 512);
-        *(uint32_t *)(fcbList + 15) = 0x66666666;
+        memset(__fcbList, 0, 512);
+        *(uint32_t *)(__fcbList + __FS_FCB_COUNT) = __FS_MAGIC;
+        bitmapInit(&__hdBitmap, __hdBitmapBuf);
 
-        bitmapInit(&hdBitmap, hdBitmapBuf, 512 * 8, true);
-
-        hdWrite(fcbList, 100, 1);
-        hdWrite(hdBitmapBuf, 101, 1);
+        hdWrite(__fcbList, __FS_SUPER_BLOCK, 1);
+        hdWrite(__hdBitmapBuf, __FS_BITMAP_BLOCK, 1);
     }
 }
 
 
 void fsList()
 {
-    for (int idx = 0; idx < 15; idx++)
+    for (uint32_t idx = 0; idx < __FS_FCB_COUNT; idx++)
     {
-        if (fcbList[idx].__startSector)
+        if (__fcbList[idx].__startSector)
         {
-            printf("%s %d %d\n", fcbList[idx].__fileName, fcbList[idx].__startSector, fcbList[idx].__sectorCount);
+            printf("%s %d %d\n", __fcbList[idx].__fileName, __fcbList[idx].__startSector, __fcbList[idx].__sectorCount);
         }
     }
 }
@@ -46,9 +53,9 @@ void fsList()
 
 uint32_t __allocateFCB()
 {
-    for (int idx = 0; idx < 15; idx++)
+    for (uint32_t idx = 0; idx < __FS_FCB_COUNT; idx++)
     {
-        if (!fcbList[idx].__startSector)
+        if (!__fcbList[idx].__startSector)
         {
             return idx;
         }
@@ -58,7 +65,7 @@ uint32_t __allocateFCB()
 }
 
 
-void fsCreate(const char *fileName, uint32_t startSector, uint32_t sectorCount)
+void fsCreate(const char *fileName, uint32_t startSector, uint8_t sectorCount)
 {
     uint32_t fcbIdx = __allocateFCB();
 
@@ -67,28 +74,28 @@ void fsCreate(const char *fileName, uint32_t startSector, uint32_t sectorCount)
         return;
     }
 
-    strCopy(fcbList[fcbIdx].__fileName, fileName, 24);
-    fcbList[fcbIdx].__startSector = bitmapAllocate(&hdBitmap, sectorCount) + 102;
-    fcbList[fcbIdx].__sectorCount = sectorCount;
+    strcpy(__fcbList[fcbIdx].__fileName, fileName, sizeof(__fcbList[fcbIdx].__fileName) - 1);
+    __fcbList[fcbIdx].__startSector = bitmapAllocate(&__hdBitmap, sectorCount) + __FS_START_BLOCK;
+    __fcbList[fcbIdx].__sectorCount = sectorCount;
 
     uint8_t hdBuf[512];
 
-    for (int idx = 0; idx < sectorCount; idx++)
+    for (uint32_t idx = 0; idx < sectorCount; idx++)
     {
         hdRead(hdBuf, startSector + idx, 1);
-        hdWrite(hdBuf, fcbList[fcbIdx].__startSector + idx, 1);
+        hdWrite(hdBuf, __fcbList[fcbIdx].__startSector + idx, 1);
     }
 
-    hdWrite(fcbList, 100, 1);
-    hdWrite(hdBitmapBuf, 101, 1);
+    hdWrite(__fcbList, __FS_SUPER_BLOCK, 1);
+    hdWrite(__hdBitmapBuf, __FS_BITMAP_BLOCK, 1);
 }
 
 
 uint32_t __findFCB(const char *fileName)
 {
-    for (int idx = 0; idx < 15; idx++)
+    for (uint32_t idx = 0; idx < __FS_FCB_COUNT; idx++)
     {
-        if (fcbList[idx].__startSector && strEq(fcbList[idx].__fileName, fileName))
+        if (__fcbList[idx].__startSector && strcmp(__fcbList[idx].__fileName, fileName))
         {
             return idx;
         }
@@ -107,12 +114,11 @@ void fsDelete(const char *fileName)
         return;
     }
 
-    bitmapDeallocate(&hdBitmap, fcbList[fcbIdx].__startSector - 102, fcbList[fcbIdx].__sectorCount);
+    bitmapDeallocate(&__hdBitmap, __fcbList[fcbIdx].__startSector - __FS_START_BLOCK, __fcbList[fcbIdx].__sectorCount);
+    memset(__fcbList + fcbIdx, 0, sizeof(__fcbList[fcbIdx]));
 
-    memset(fcbList + fcbIdx, 0, 32);
-
-    hdWrite(fcbList, 100, 1);
-    hdWrite(hdBitmapBuf, 101, 1);
+    hdWrite(__fcbList, __FS_SUPER_BLOCK, 1);
+    hdWrite(__hdBitmapBuf, __FS_BITMAP_BLOCK, 1);
 }
 
 
@@ -122,6 +128,6 @@ void fsLoad(const char *fileName)
 
     if (fcbIdx != -1)
     {
-        loadTaskPL3(fcbList[fcbIdx].__startSector, fcbList[fcbIdx].__sectorCount);
+        loadTaskPL3(__fcbList[fcbIdx].__startSector, __fcbList[fcbIdx].__sectorCount);
     }
 }

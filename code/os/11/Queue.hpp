@@ -5,46 +5,43 @@
 
 void queueInit(Queue *this)
 {
-    this->root.__prev = this->root.__next = &this->root;
+    this->__root.__prev = &this->__root;
+    this->__root.__next = &this->__root;
+    this->__size = 0;
 }
 
 
-bool queueEmpty(Queue *this)
+uint32_t queueGetSize(Queue *this)
 {
-    __asm__ __volatile__("pushf; cli");
-
-    bool emptyBool = this->root.__next == &this->root;
-
-    __asm__ __volatile__("popf");
-
-    return emptyBool;
+    return this->__size;
 }
 
 
 void queuePush(Queue *this, Node *pushNode)
 {
-    __asm__ __volatile__("pushf; cli");
+    pushNode->__prev = this->__root.__prev;
+    pushNode->__next = &this->__root;
 
-    pushNode->__prev = this->root.__prev;
-    pushNode->__next = &this->root;
+    this->__root.__prev->__next = pushNode;
+    this->__root.__prev = pushNode;
 
-    this->root.__prev->__next = pushNode;
-    this->root.__prev = pushNode;
-
-    __asm__ __volatile__("popf");
+    this->__size++;
 }
 
 
 Node *queuePop(Queue *this)
 {
-    __asm__ __volatile__("pushf; cli");
+    Node *popNode = 0;
 
-    Node *popNode = this->root.__next;
+    if (this->__size)
+    {
+        popNode = this->__root.__next;
 
-    popNode->__next->__prev = &this->root;
-    this->root.__next = popNode->__next;
+        popNode->__next->__prev = &this->__root;
+        this->__root.__next = popNode->__next;
 
-    __asm__ __volatile__("popf");
+        this->__size--;
+    }
 
     return popNode;
 }

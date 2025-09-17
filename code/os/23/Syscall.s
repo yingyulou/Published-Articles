@@ -2,15 +2,12 @@
 [default rel]
 
 extern printStr
+extern inputStr
 extern taskExit
 
 global syscallInit
 
 syscallInit:
-
-    push rax
-    push rcx
-    push rdx
 
     mov ecx, 0xc0000080
     rdmsr
@@ -33,10 +30,6 @@ syscallInit:
     xor edx, edx
     wrmsr
 
-    pop rdx
-    pop rcx
-    pop rax
-
     ret
 
 syscallHandle:
@@ -47,7 +40,7 @@ syscallHandle:
     push rcx
     push r11
 
-    mov rcx, syscallList
+    mov rcx, __syscallList
     call [rcx + rax * 8]
 
     pop r11
@@ -57,7 +50,7 @@ syscallHandle:
 
     o64 sysret
 
-syscallList:
+__syscallList:
     dq printStr
-    dq 0x0
+    dq inputStr
     dq taskExit

@@ -1,24 +1,29 @@
 [bits 32]
 
-extern printStr
 extern printf
+extern curTask
+extern getNextTask
 extern keyboardDriver
+extern printStr
 extern inputStr
-extern queuePush
-extern queuePop
-extern TSS
-extern taskQueue
-extern exitQueue
-extern shellQueue
-extern deallocateTaskCR3
+extern taskExit
 
-global intList
 global __picInit
+global __intList
+global __taskSwitch
+
+%macro intTmpl 1
+int%1:
+
+    push %1
+    push __intFmtStr
+    call printf
+    add esp, 8
+
+    hlt
+%endmacro
 
 __picInit:
-
-    push eax
-    push edx
 
     mov al, 0x11
     out 0x20, al
@@ -41,23 +46,69 @@ __picInit:
     mov al, 0xff
     out 0xa1, al
 
-    pop edx
-    pop eax
-
     ret
 
-%macro intTmpl 1
+intTimer:
 
-int%1:
+    push ds
+    push es
+    push fs
+    push gs
+    pusha
 
-    push %1
-    push __fmtStr
-    call printf
-    add esp, 8
+    mov al, 0x20
+    out 0x20, al
+    out 0xa0, al
 
-    hlt
+    mov eax, [curTask]
+    mov [eax + 12], esp
 
-%endmacro
+__taskSwitch:
+
+    call getNextTask
+
+    mov ebx, [eax + 8]
+    mov cr3, ebx
+
+    mov esp, [eax + 12]
+
+    lea ebx, [eax + 0x1000]
+    mov [0xc009f018], ebx
+
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
+    iret
+
+intKeyboard:
+
+    pusha
+
+    mov al, 0x20
+    out 0x20, al
+    out 0xa0, al
+
+    in al, 0x60
+    push eax
+    call keyboardDriver
+    add esp, 4
+
+    popa
+
+    iret
+
+intSyscall:
+
+    push edx
+    push ecx
+    push ebx
+    call [__syscallList + eax * 4]
+    add esp, 12
+
+    iret
 
 intTmpl 0x00
 intTmpl 0x01
@@ -108,115 +159,7 @@ intTmpl 0x2d
 intTmpl 0x2e
 intTmpl 0x2f
 
-intTimer:
-
-    push ds
-    push es
-    push fs
-    push gs
-    pusha
-
-    mov al, 0x20
-    out 0x20, al
-    out 0xa0, al
-
-    mov eax, esp
-    and eax, 0xfffff000
-
-    mov [eax + 12], esp
-
-    push eax
-    push dword [eax + 16]
-    call queuePush
-    add esp, 8
-
-    push taskQueue
-    call queuePop
-    add esp, 4
-
-    mov ebx, [eax + 8]
-    mov cr3, ebx
-
-    mov esp, [eax + 12]
-
-    add eax, 0x1000
-    mov [TSS + 4], eax
-
-    popa
-    pop gs
-    pop fs
-    pop es
-    pop ds
-
-    iret
-
-intKeyboard:
-
-    push eax
-
-    xor eax, eax
-
-    mov al, 0x20
-    out 0x20, al
-    out 0xa0, al
-
-    in al, 0x60
-    push eax
-    call keyboardDriver
-    add esp, 4
-
-    pop eax
-
-    iret
-
-intSyscall:
-
-    push edx
-    push ecx
-    push ebx
-    call [syscallList + eax * 4]
-    add esp, 12
-
-    iret
-
-taskExit:
-
-    call deallocateTaskCR3
-
-    mov eax, esp
-    and eax, 0xfffff000
-
-    push eax
-    push exitQueue
-    call queuePush
-    add esp, 8
-
-    push shellQueue
-    call queuePop
-    add esp, 4
-
-    mov dword [eax + 16], taskQueue
-
-    mov ebx, [eax + 8]
-    mov cr3, ebx
-
-    mov esp, [eax + 12]
-
-    add eax, 0x1000
-    mov [TSS + 4], eax
-
-    popa
-    pop gs
-    pop fs
-    pop es
-    pop ds
-
-    iret
-
-__fmtStr:
-    db `Int: %d\n`, 0
-
-intList:
+__intList:
     dd int0x00
     dd int0x01
     dd int0x02
@@ -267,7 +210,10 @@ intList:
     dd int0x2f
     dd intSyscall
 
-syscallList:
+__syscallList:
     dd printStr
     dd inputStr
     dd taskExit
+
+__intFmtStr:
+    db `Int: %d\n\0`

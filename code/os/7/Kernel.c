@@ -8,7 +8,7 @@ int main()
 
     __asm__ __volatile__("sti");
 
-    while (1);
+    for (;;);
 
     return 0;
 }

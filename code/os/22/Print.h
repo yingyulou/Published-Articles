@@ -4,7 +4,7 @@
 
 void printChar(char tarChar);
 void printStr(const char *tarStr);
-void printInt(uint32_t tarNum);
+void printInt(uint64_t tarNum);
 void printHex(uint64_t tarNum);
 void printf(const char *fmtStr, ...);
 void printInit();

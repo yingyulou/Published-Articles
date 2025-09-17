@@ -1,15 +1,23 @@
 [bits 32]
 
-extern printInt
 extern printf
+extern printInt
 
-global intList
 global __picInit
+global __intList
+
+%macro intTmpl 1
+int%1:
+
+    push %1
+    push __intFmtStr
+    call printf
+    add esp, 8
+
+    hlt
+%endmacro
 
 __picInit:
-
-    push eax
-    push edx
 
     mov al, 0x11
     out 0x20, al
@@ -32,23 +40,31 @@ __picInit:
     mov al, 0xff
     out 0xa1, al
 
-    pop edx
-    pop eax
-
     ret
 
-%macro intTmpl 1
+intTimer:
 
-int%1:
+    push ds
+    push es
+    push fs
+    push gs
+    pusha
 
-    push %1
-    push __fmtStr
-    call printf
-    add esp, 8
+    mov al, 0x20
+    out 0x20, al
+    out 0xa0, al
 
-    hlt
+    push 6
+    call printInt
+    add esp, 4
 
-%endmacro
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
+    iret
 
 intTmpl 0x00
 intTmpl 0x01
@@ -99,26 +115,7 @@ intTmpl 0x2d
 intTmpl 0x2e
 intTmpl 0x2f
 
-intTimer:
-
-    push eax
-
-    mov al, 0x20
-    out 0x20, al
-    out 0xa0, al
-
-    push 6
-    call printInt
-    add esp, 4
-
-    pop eax
-
-    iret
-
-__fmtStr:
-    db `Int: %d\n`, 0
-
-intList:
+__intList:
     dd int0x00
     dd int0x01
     dd int0x02
@@ -167,3 +164,6 @@ intList:
     dd int0x2d
     dd int0x2e
     dd int0x2f
+
+__intFmtStr:
+    db `Int: %d\n\0`

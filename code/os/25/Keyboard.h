@@ -1,8 +1,7 @@
 #pragma once
 
-#include "IOQueue.h"
 #include "Util.h"
 
 void keyboardInit();
-void keyboardDriver(uint64_t scanCode);
-void inputStr(char *resStr, uint64_t strLen);
+void keyboardDriver(uint8_t scanCode);
+void inputStr(char *strBuf, uint64_t strSize);

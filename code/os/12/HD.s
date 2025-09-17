@@ -8,7 +8,7 @@ hdRead:
     push ebp
     mov ebp, esp
 
-    pusha
+    push edi
 
     mov dx, 0x1f2
     mov al, [ebp + 16]
@@ -43,12 +43,12 @@ hdRead:
     jne .__waitHD
 
     mov dx, 0x1f0
-    mov ecx, [ebp + 16]
+    movzx ecx, byte [ebp + 16]
     shl ecx, 8
     mov edi, [ebp + 8]
     rep insw
 
-    popa
+    pop edi
 
     leave
     ret
@@ -58,7 +58,7 @@ hdWrite:
     push ebp
     mov ebp, esp
 
-    pusha
+    push esi
 
     mov dx, 0x1f2
     mov al, [ebp + 16]
@@ -93,12 +93,12 @@ hdWrite:
     jne .__waitHD
 
     mov dx, 0x1f0
-    mov ecx, [ebp + 16]
+    movzx ecx, byte [ebp + 16]
     shl ecx, 8
     mov esi, [ebp + 8]
     rep outsw
 
-    popa
+    pop esi
 
     leave
     ret

@@ -1,23 +1,20 @@
 #pragma once
 
-#include "Bitmap.h"
-#include "Queue.h"
 #include "Util.h"
 
 typedef struct
 {
-    Node tcbNode;
-    uint32_t CR3;
-    uint32_t ESP0;
-    Bitmap vMemoryBitmap;
+    Node _;
+    uint32_t __CR3;
+    uint32_t __ESP0;
+    uint32_t __taskState;
+    uint8_t __TSS[104];
 } TCB;
 
 
-extern uint8_t TSS[];
-
-extern Queue taskQueue;
+extern TCB *curTask;
 
 void taskInit();
-TCB *getTCB();
-void loadTaskPL0(uint32_t EIP);
-void loadTaskPL3(uint32_t startSector, uint32_t sectorCount);
+TCB *loadTaskPL0(void *EIP);
+void loadTaskPL3(uint32_t startSector, uint8_t sectorCount);
+TCB *getNextTask();

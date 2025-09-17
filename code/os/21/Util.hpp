@@ -4,13 +4,23 @@
 
 void memcpy(void *tarPtr, const void *srcPtr, uint64_t memSize)
 {
-    __asm__ __volatile__("rep movsb":: "D"(tarPtr), "S"(srcPtr), "c"(memSize): "memory");
+    __asm__ __volatile__(
+        "rep movsb"
+        : "+D"(tarPtr), "+S"(srcPtr), "+c"(memSize)
+        :
+        : "memory"
+    );
 }
 
 
 void memset(void *tarPtr, uint8_t setVal, uint64_t memSize)
 {
-    __asm__ __volatile__("rep stosb":: "D"(tarPtr), "a"(setVal), "c"(memSize): "memory");
+    __asm__ __volatile__(
+        "rep stosb"
+        : "+D"(tarPtr), "+c"(memSize)
+        : "a"(setVal)
+        : "memory"
+    );
 }
 
 
@@ -37,11 +47,11 @@ bool strcmp(const char *lhs, const char *rhs)
 }
 
 
-void strcpy(char *tarStr, const char *srcStr, long long strLen)
+void strcpy(char *tarStr, const char *srcStr, uint64_t strSize)
 {
-    long long idx = 0;
+    uint64_t idx = 0;
 
-    for (; idx < strLen - 1; idx++)
+    for (; idx < strSize; idx++)
     {
         if (srcStr[idx])
         {
@@ -59,7 +69,9 @@ void strcpy(char *tarStr, const char *srcStr, long long strLen)
 
 bool isalnum(char curChar)
 {
-    return ('A' <= curChar && curChar <= 'Z') || ('a' <= curChar && curChar <= 'z') || ('0' <= curChar && curChar <= '9');
+    return ('A' <= curChar && curChar <= 'Z') ||
+        ('a' <= curChar && curChar <= 'z')    ||
+        ('0' <= curChar && curChar <= '9');
 }
 
 
@@ -69,13 +81,19 @@ bool isdigit(char curChar)
 }
 
 
-const char *nextStr(char **strPtr)
+const char *getNextStr(char **strPtr)
 {
-    for (; !isalnum(**strPtr); (*strPtr)++);
+    while (!isalnum(**strPtr))
+    {
+        (*strPtr)++;
+    }
 
     const char *resStr = *strPtr;
 
-    for (; isalnum(**strPtr); (*strPtr)++);
+    while (isalnum(**strPtr))
+    {
+        (*strPtr)++;
+    }
 
     **strPtr = 0;
 
@@ -83,15 +101,19 @@ const char *nextStr(char **strPtr)
 }
 
 
-uint32_t nextNum(char **strPtr)
+uint32_t getNextNum(char **strPtr)
 {
     uint32_t resNum = 0;
 
-    for (; !isdigit(**strPtr); (*strPtr)++);
+    while (!isdigit(**strPtr))
+    {
+        (*strPtr)++;
+    }
 
-    for (; isdigit(**strPtr); (*strPtr)++)
+    while (isdigit(**strPtr))
     {
         resNum = resNum * 10 + **strPtr - '0';
+        (*strPtr)++;
     }
 
     return resNum;

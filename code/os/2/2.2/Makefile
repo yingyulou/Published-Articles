@@ -1,7 +1,7 @@
 all:
 	nasm Mbr.s
-	dd if=Mbr of=c.img seek=0 count=1 conv=notrunc
+	if [ ! -f Arena.img ]; then dd if=/dev/zero of=Arena.img count=20480; fi
+	dd if=Mbr of=Arena.img seek=0 conv=notrunc
 
 clean:
-	rm -f Mbr
-	rm -f c.img*
+	rm -f Mbr Arena.img*

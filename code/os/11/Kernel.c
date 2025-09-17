@@ -4,10 +4,11 @@
 #include "Int.hpp"
 #include "Memory.hpp"
 #include "Task.hpp"
+#include "Util.hpp"
 
 void __testTask()
 {
-    while (1)
+    for (;;)
     {
         __asm__ __volatile__("cli");
         printStr("Task");
@@ -23,12 +24,12 @@ int main()
     memoryInit();
     taskInit();
 
-    loadTaskPL0((uint32_t)__testTask);
-    loadTaskPL0((uint32_t)__testTask);
+    loadTaskPL0(__testTask);
+    loadTaskPL0(__testTask);
 
     __asm__ __volatile__("sti");
 
-    while (1)
+    for (;;)
     {
         __asm__ __volatile__("cli");
         printStr("Kernel");

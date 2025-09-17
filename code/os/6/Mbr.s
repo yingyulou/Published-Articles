@@ -1,4 +1,17 @@
-section mbr vstart=0x7c00
+%include "Boot.inc"
+
+section Mbr
+
+    mov ax, __BOOT_SEG
+    mov es, ax
+    mov si, 0x7c00
+    xor di, di
+    mov cx, 256
+    rep movsw
+    mov ds, ax
+    jmp __BOOT_SEG:.__bootStart
+
+.__bootStart:
 
     lgdt [GDTR]
 
@@ -7,10 +20,10 @@ section mbr vstart=0x7c00
     out 0x92, al
 
     mov eax, cr0
-    or eax, 0x1
+    bts eax, 0
     mov cr0, eax
 
-    jmp (1 << 3):.__protectMode
+    jmp dword (1 << 3):.__protectMode + __BOOT_ADDR
 
 [bits 32]
 
@@ -31,25 +44,24 @@ section mbr vstart=0x7c00
     mov dword [0x100000], 0x101003
 
     mov eax, 0x3
-    mov ebx, 0x101000
+    mov edi, 0x101000
     mov ecx, 256
 
 .__installPTE:
 
-    mov [ebx], eax
+    stosd
     add eax, 0x1000
-    add ebx, 4
     loop .__installPTE
 
     mov eax, 0x100000
     mov cr3, eax
 
     mov eax, cr0
-    or eax, 0x80000000
+    bts eax, 31
     mov cr0, eax
 
     mov dx, 0x1f2
-    mov al, 99
+    mov al, 97
     out dx, al
 
     inc dx
@@ -71,62 +83,57 @@ section mbr vstart=0x7c00
     mov al, 0x20
     out dx, al
 
-.__waitDisk:
+.__waitHD:
 
     in al, dx
     and al, 0x88
     cmp al, 0x8
-    jne .__waitDisk
+    jne .__waitHD
 
     mov dx, 0x1f0
     mov edi, 0x80000
-    mov ecx, 99 * 512 / 2
+    mov ecx, 97 * 512 / 2
     rep insw
-
-    xor ecx, ecx
-    xor edx, edx
 
     mov ebx, [0x8001c]
     add ebx, 0x80000
-    mov dx, [0x8002a]
-    mov cx, [0x8002c]
+    movzx edx, word [0x8002a]
+    movzx ecx, word [0x8002c]
 
-.__parseElf:
-
-    push ecx
+.__parseELF:
 
     cmp dword [ebx], 0x1
-    jne .__parseElfEnd
+    jne .__notLoad
 
+    push ecx
     mov esi, [ebx + 0x4]
     add esi, 0x80000
     mov edi, [ebx + 0x8]
     mov ecx, [ebx + 0x10]
     rep movsb
-
     xor al, al
     mov ecx, [ebx + 0x14]
     sub ecx, [ebx + 0x10]
     rep stosb
+    pop ecx
 
-.__parseElfEnd:
+.__notLoad:
 
     add ebx, edx
-
-    pop ecx
-    loop .__parseElf
+    loop .__parseELF
 
     jmp [0x80018]
 
+align 0x8
 GDT:
-    dq 0
+    dq 0x0
     dq 0x00cf98000000ffff
     dq 0x00cf92000000ffff
 
 GDTR:
     dw $ - GDT - 1
-    dd GDT
+    dd GDT + __BOOT_ADDR
 
-times 510 - ($ - $$) db 0
+times 510 - ($ - $$) db 0x0
 
 db 0x55, 0xaa

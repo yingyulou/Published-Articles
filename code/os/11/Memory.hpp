@@ -2,54 +2,36 @@
 
 #include "Memory.h"
 #include "Bitmap.h"
-#include "Task.h"
 #include "Util.h"
 
-Bitmap __pMemoryBitmap;
+#define __V_START_ADDR 0xc0100000
+#define __P_START_ADDR 0x200000
+
+Bitmap __vBitmap, __pBitmap;
+uint8_t __memBitmapBuf[0x2000];
 
 void memoryInit()
 {
-    bitmapInit(&__pMemoryBitmap, (uint8_t *)0xc009e000, 0x8000, true);
+    bitmapInit(&__vBitmap, __memBitmapBuf);
+    bitmapInit(&__pBitmap, __memBitmapBuf + 0x1000);
 }
 
 
-void memcpy(void *tarPtr, const void *srcPtr, uint32_t memSize)
+uint32_t __allocateAddr(Bitmap *memBitmap, uint32_t startAddr, uint32_t pageCount)
 {
-    __asm__ __volatile__(
-        "rep movsb\n\t"
-        :
-        : "D"(tarPtr), "S"(srcPtr), "c"(memSize)
-        : "memory"
-    );
+    return startAddr + bitmapAllocate(memBitmap, pageCount) * 0x1000;
 }
 
 
-void memset(void *tarPtr, uint8_t setVal, uint32_t memSize)
-{
-    __asm__ __volatile__(
-        "rep stosb\n\t"
-        :
-        : "D"(tarPtr), "a"(setVal), "c"(memSize)
-        : "memory"
-    );
-}
-
-
-uint32_t __allocateAddr(Bitmap *memoryBitmapPtr, uint32_t startAddr, uint32_t pageCount)
-{
-    return startAddr + (bitmapAllocate(memoryBitmapPtr, pageCount) << 12);
-}
-
-
-void __installPage(uint32_t vAddr, uint32_t pAddr, Bitmap *pMemoryBitmapPtr, uint32_t pStartAddr)
+void __installPage(uint32_t vAddr, uint32_t pAddr)
 {
     uint32_t *pdePtr = (uint32_t *)(0xfffff000 | (vAddr >> 22 << 2));
     uint32_t *ptePtr = (uint32_t *)(0xffc00000 | (vAddr >> 12 << 2));
 
-    if (!(*pdePtr & 1))
+    if (!(*pdePtr & 0x1))
     {
-        *pdePtr = __allocateAddr(pMemoryBitmapPtr, pStartAddr, 1) | 0x7;
-        memset((void *)((uint32_t)ptePtr & 0xfffff000), 0, 0x1000);
+        *pdePtr = __allocateAddr(&__pBitmap, __P_START_ADDR, 1) | 0x7;
+        memset((void *)((uint32_t)ptePtr & 0xfffff000), 0x0, 0x1000);
     }
 
     *ptePtr = pAddr | 0x7;
@@ -58,58 +40,48 @@ void __installPage(uint32_t vAddr, uint32_t pAddr, Bitmap *pMemoryBitmapPtr, uin
 }
 
 
-uint32_t __allocatePage(Bitmap *vMemoryBitmapPtr, Bitmap *pMemoryBitmapPtr, uint32_t pageCount,
-    uint32_t vStartAddr, uint32_t pStartAddr)
+void __installMemory(uint32_t startAddr, uint32_t pageCount)
 {
-    uint32_t vAddr = __allocateAddr(vMemoryBitmapPtr, vStartAddr, pageCount);
-
-    for (int idx = 0; idx < pageCount; idx++)
+    for (uint32_t pageIdx = 0; pageIdx < pageCount; pageIdx++)
     {
-        uint32_t pAddr = __allocateAddr(pMemoryBitmapPtr, pStartAddr, 1);
-
-        __installPage(vAddr + idx * 0x1000, pAddr, pMemoryBitmapPtr, pStartAddr);
+        __installPage(startAddr + pageIdx * 0x1000, __allocateAddr(&__pBitmap, __P_START_ADDR, 1));
     }
 
-    return vAddr;
+    memset((void *)startAddr, 0x0, pageCount * 0x1000);
 }
 
 
 void *allocateKernelPage(uint32_t pageCount)
 {
-    return (void *)__allocatePage(&((TCB *)0xc009f000)->vMemoryBitmap, &__pMemoryBitmap, pageCount, 0xc0100000, 0x200000);
+    uint32_t startAddr = __allocateAddr(&__vBitmap, __V_START_ADDR, pageCount);
+
+    __installMemory(startAddr, pageCount);
+
+    return (void *)startAddr;
 }
 
 
-uint32_t __deallocateAddr(uint32_t deallocateAddr, Bitmap *memoryBitmapPtr, uint32_t startAddr, uint32_t pageCount)
+void __deallocateAddr(Bitmap *memBitmap, uint32_t startAddr, uint32_t pageCount, uint32_t memAddr)
 {
-    bitmapDeallocate(memoryBitmapPtr, (deallocateAddr - startAddr) / 0x1000, pageCount);
+    bitmapDeallocate(memBitmap, (memAddr - startAddr) / 0x1000, pageCount);
 }
 
 
-void __uninstallPage(uint32_t vAddr)
+void deallocateKernelPage(void *startPtr, uint32_t pageCount)
 {
-    *(uint32_t *)(0xffc00000 | (vAddr >> 12 << 2)) = 0;
+    uint32_t startAddr = (uint32_t)startPtr;
 
-    __asm__ __volatile__("invlpg (%0)":: "r"(vAddr));
-}
+    __deallocateAddr(&__vBitmap, __V_START_ADDR, pageCount, startAddr);
 
-
-void __deallocatePage(uint32_t vAddr, Bitmap *vMemoryBitmapPtr, Bitmap *pMemoryBitmapPtr,
-    uint32_t pageCount, uint32_t vStartAddr, uint32_t pStartAddr)
-{
-    __deallocateAddr(vAddr, vMemoryBitmapPtr, vStartAddr, pageCount);
-
-    for (int idx = 0, curAddr = vAddr; idx < pageCount; idx++, curAddr += 0x1000)
+    for (uint32_t pageIdx = 0; pageIdx < pageCount; pageIdx++)
     {
-        uint32_t pAddr = (*(uint32_t *)(0xffc00000 | (curAddr >> 12 << 2))) & 0xfffff000;
+        uint32_t vAddr   = startAddr + pageIdx * 0x1000;
+        uint32_t *ptePtr = (uint32_t *)(0xffc00000 | (vAddr >> 12 << 2));
+        uint32_t pAddr   = *ptePtr & 0xfffff000;
 
-        __deallocateAddr(pAddr, pMemoryBitmapPtr, pStartAddr, 1);
-        __uninstallPage(curAddr);
+        __deallocateAddr(&__pBitmap, __P_START_ADDR, 1, pAddr);
+
+        *ptePtr = 0x0;
+        __asm__ __volatile__("invlpg (%0)":: "r"(vAddr));
     }
-}
-
-
-void deallocateKernelPage(void *vAddr, uint32_t pageCount)
-{
-    __deallocatePage((uint32_t)vAddr, &((TCB *)0xc009f000)->vMemoryBitmap, &__pMemoryBitmap, pageCount, 0xc0100000, 0x200000);
 }

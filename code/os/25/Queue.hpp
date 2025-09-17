@@ -6,27 +6,29 @@
 
 void queueInit(Queue *this)
 {
-    this->__root.__prev = this->__root.__next = &this->__root;
+    this->__root.__prev = &this->__root;
+    this->__root.__next = &this->__root;
+    this->__size = 0;
 
     lockInit(&this->__lock);
 }
 
 
-bool queueEmpty(Queue *this)
+uint64_t queueGetSize(Queue *this)
 {
-    uint64_t RFLAGS = lockAcquire(&this->__lock);
+    lockAcquire(&this->__lock);
 
-    bool emptyBool = this->__root.__next == &this->__root;
+    uint64_t queueSize = this->__size;
 
-    lockRelease(&this->__lock, RFLAGS);
+    lockRelease(&this->__lock);
 
-    return emptyBool;
+    return queueSize;
 }
 
 
 void queuePush(Queue *this, Node *pushNode)
 {
-    uint64_t RFLAGS = lockAcquire(&this->__lock);
+    lockAcquire(&this->__lock);
 
     pushNode->__prev = this->__root.__prev;
     pushNode->__next = &this->__root;
@@ -34,20 +36,29 @@ void queuePush(Queue *this, Node *pushNode)
     this->__root.__prev->__next = pushNode;
     this->__root.__prev = pushNode;
 
-    lockRelease(&this->__lock, RFLAGS);
+    this->__size++;
+
+    lockRelease(&this->__lock);
 }
 
 
 Node *queuePop(Queue *this)
 {
-    uint64_t RFLAGS = lockAcquire(&this->__lock);
+    Node *popNode = 0;
 
-    Node *popNode = this->__root.__next;
+    lockAcquire(&this->__lock);
 
-    popNode->__next->__prev = &this->__root;
-    this->__root.__next = popNode->__next;
+    if (this->__size)
+    {
+        popNode = this->__root.__next;
 
-    lockRelease(&this->__lock, RFLAGS);
+        popNode->__next->__prev = &this->__root;
+        this->__root.__next = popNode->__next;
+
+        this->__size--;
+    }
+
+    lockRelease(&this->__lock);
 
     return popNode;
 }

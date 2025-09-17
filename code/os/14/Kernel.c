@@ -15,8 +15,8 @@ int main()
     taskInit();
     fsInit();
 
-    fsCreate("test", 1000, 20);
-    fsCreate("test", 1000, 20);
+    fsCreate("test", 1000, 100);
+    fsCreate("test", 1000, 100);
     fsList();
     fsDelete("test");
     fsList();
@@ -25,10 +25,8 @@ int main()
 
     __asm__ __volatile__("sti");
 
-    while (1)
+    for (;;)
     {
-        deleteTask();
-
         __asm__ __volatile__("hlt");
     }
 

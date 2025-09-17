@@ -1,4 +1,4 @@
-section mbr vstart=0x7c00
+section Mbr vstart=0x7c00
 
     lgdt [GDTR]
 
@@ -7,7 +7,7 @@ section mbr vstart=0x7c00
     out 0x92, al
 
     mov eax, cr0
-    or eax, 0x1
+    bts eax, 0
     mov cr0, eax
 
     jmp (1 << 3):.__protectMode
@@ -28,8 +28,9 @@ section mbr vstart=0x7c00
 
     jmp $
 
+align 0x8
 GDT:
-    dq 0
+    dq 0x0
     dq 0x00cf98000000ffff
     dq 0x00cf92000000ffff
 
@@ -37,6 +38,6 @@ GDTR:
     dw $ - GDT - 1
     dd GDT
 
-times 510 - ($ - $$) db 0
+times 510 - ($ - $$) db 0x0
 
 db 0x55, 0xaa

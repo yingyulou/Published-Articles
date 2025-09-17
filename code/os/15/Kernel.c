@@ -18,10 +18,8 @@ int main()
 
     __asm__ __volatile__("sti");
 
-    while (1)
+    for (;;)
     {
-        deleteTask();
-
         __asm__ __volatile__("hlt");
     }
 
