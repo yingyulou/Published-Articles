@@ -183,7 +183,9 @@ void loadTaskPL3(uint32_t startSector, uint8_t sectorCount)
 
 TCB *getCurTask()
 {
-    register uint64_t RSP0 __asm__("rsp");
+    uint64_t RSP0;
+
+    __asm__ __volatile__("mov %%rsp, %0": "=g"(RSP0));
 
     return (TCB *)((RSP0 - 1) & 0xfffffffffffff000);
 }
