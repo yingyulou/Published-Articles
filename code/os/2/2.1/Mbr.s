@@ -1,4 +1,4 @@
-section Mbr vstart=0x7c00
+org 0x7c00
 
     jmp $
 

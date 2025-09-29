@@ -1,4 +1,4 @@
-section Mbr vstart=0x7c00
+org 0x7c00
 
     mov ax, 0xb800
     mov ds, ax

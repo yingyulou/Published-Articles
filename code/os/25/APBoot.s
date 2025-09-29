@@ -1,7 +1,5 @@
 %include "Boot.inc"
 
-section APBoot
-
     jmp .__bootStart
 
 align 0x8

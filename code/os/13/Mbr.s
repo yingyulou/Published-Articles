@@ -1,7 +1,5 @@
 %include "Boot.inc"
 
-section Mbr
-
     mov ax, __BOOT_SEG
     mov es, ax
     mov si, 0x7c00
